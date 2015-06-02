@@ -1,1 +1,4 @@
-mvn exec:java -Dexec.mainClass="com.particula.twitterCrawler.Parser"
+#!/bin/bash
+while true; do
+	mvn exec:java -Dexec.mainClass="com.particula.twitterCrawler.Parser" &
+done
