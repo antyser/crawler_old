@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.reflect.TypeToken;
 import com.particula.utils.KafkaFactory;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
@@ -24,12 +23,10 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.*;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -39,9 +36,8 @@ public class Parser {
     Producer<String, String> producer;
     int counter = 0;
     Properties prop;
+    JsonParser parser = new JsonParser();
     Gson gson = new GsonBuilder().create();
-    Type mapType = new TypeToken<Map<String, String>>() {
-    }.getType();
 
     public Parser(Properties prop) {
         producer = KafkaFactory.createProducer();
@@ -53,8 +49,8 @@ public class Parser {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            System.out.println("input: " + msg);
-            Map<String, String> data = gson.fromJson(msg, mapType);
+            //System.out.println("input: " + msg);
+            JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
     }
@@ -67,7 +63,6 @@ public class Parser {
             builder = builderFactory.newDocumentBuilder();
             Document document = builder.parse(new ByteArrayInputStream(content.getBytes()));
             XPath xPath = XPathFactory.newInstance().newXPath();
-            String test = "//*[@class=";
             String expression = "//*[@class='content']/p//a[@class='twitter-timeline-link']";
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             return nodeList;
@@ -124,10 +119,11 @@ public class Parser {
         return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
-    public void process(Map<String, String> data) {
-        String htmlContent = data.get("url");
+    public void process(JsonObject data) {
+        String htmlContent = data.get("url").getAsString();
         if (htmlContent == null) return;
         NodeList nodeList = getTags(htmlContent);
+        System.out.println("nodelist len: " + nodeList.getLength());
         if (nodeList == null) return;
         for (int i = 0; i < nodeList.getLength(); i++) {
             if (nodeList.item(i).getNodeType() == Node.ELEMENT_NODE) {
@@ -139,7 +135,7 @@ public class Parser {
                 output.addProperty("url", url);
                 output.addProperty("domain", getDomainName(url));
                 output.addProperty("score", 1);
-                output.addProperty("dl_ts", data.get("dl_ts"));
+                output.addProperty("dl_ts", data.get("dl_ts").getAsString());
                 produce(output, prop.getProperty("kafka.links"));
             }
         }
@@ -148,14 +144,6 @@ public class Parser {
     public void produce(JsonObject data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("output: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
-        counter++;
-        producer.send(message);
-    }
-
-    public void produce(Map<String, String> data, String topic) {
-        String msg = gson.toJson(data);
-        System.out.println("input: " + msg);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
         counter++;
         producer.send(message);

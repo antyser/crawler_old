@@ -83,7 +83,7 @@ public class Fetcher {
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("output: " + msg);
+        //System.out.println("output: " + msg);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
         counter++;
         producer.send(message);
