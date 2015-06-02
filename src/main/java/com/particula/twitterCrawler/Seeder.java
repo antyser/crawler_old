@@ -6,23 +6,23 @@ import com.particula.utils.KafkaFactory;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by junliu on 6/1/15.
  */
 public class Seeder {
-    private static final String SEEDS_QUEUE = "java.test.seeds";
+    private static final String INITIAL_URL = "https://twitter.com/";
     Producer<String, String> producer;
+    Properties prop;
     Gson gson = new GsonBuilder().create();
     int counter = 0;
 
-    public Seeder() {
+    public Seeder(Properties prop) {
+        this.prop = prop;
         producer = KafkaFactory.createProducer();
     }
 
@@ -39,8 +39,8 @@ public class Seeder {
             String line;
             while ((line = br.readLine()) != null) {
                 Map<String, String> data = new HashMap<>();
-                data.put("url", line);
-                produce(data, SEEDS_QUEUE);
+                data.put("url", INITIAL_URL + line);
+                produce(data, prop.getProperty("kafka.seeds"));
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -50,7 +50,13 @@ public class Seeder {
     }
 
     public static void main(String[] args) {
-        Seeder s = new Seeder();
-        s.process();
+        Properties prop = new Properties();
+        try {
+            prop.load(new FileInputStream("resources/config.properties"));
+            Seeder s = new Seeder(prop);
+            s.process();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

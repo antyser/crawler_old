@@ -23,31 +23,29 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by junliu on 6/1/15.
  */
 public class Parser {
-    private static final String PAGES_QUEUE = "java.test.pages";
-    private static final String LINKS_QUEUE = "java.test.links";
     Producer<String, String> producer;
     int counter = 0;
+    Properties prop;
     Gson gson = new GsonBuilder().create();
     Type mapType = new TypeToken<Map<String, String>>() {
     }.getType();
 
-    public Parser() {
+    public Parser(Properties prop) {
         producer = KafkaFactory.createProducer();
+        this.prop = prop;
     }
 
     public void consume(KafkaStream<byte[], byte[]> stream) {
@@ -141,6 +139,7 @@ public class Parser {
                 output.addProperty("domain", getDomainName(url));
                 output.addProperty("score", 1);
                 output.addProperty("dl_ts", data.get("dl_ts"));
+                produce(output, prop.getProperty("kafka.links"));
             }
         }
     }
@@ -162,7 +161,14 @@ public class Parser {
     }
 
     public static void main(String[] args) {
-        Parser p = new Parser();
-        p.consume(KafkaFactory.createConsumerStream(PAGES_QUEUE));
+        Properties prop = new Properties();
+        try {
+            prop.load(new FileInputStream("resources/config.properties"));
+            Parser p = new Parser(prop);
+            p.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.pages")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }

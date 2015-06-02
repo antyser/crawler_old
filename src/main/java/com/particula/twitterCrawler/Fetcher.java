@@ -10,27 +10,30 @@ import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by junliu on 6/1/15.
  */
 public class Fetcher {
-    private static final String SEEDS_QUEUE = "java.test.seeds";
-    private static final String PAGES_QUEUE = "java.test.pages";
     Producer<String, String> producer;
     int counter = 0;
     Gson gson = new GsonBuilder().create();
+    Properties prop;
     Type mapType = new TypeToken<Map<String, String>>() {
     }.getType();
 
-    public Fetcher() {
+    public Fetcher(Properties prop) {
         producer = KafkaFactory.createProducer();
+        prop = prop;
     }
 
     private String getHtml(String url) {
@@ -76,7 +79,7 @@ public class Fetcher {
         outputData.put("data", htmlContent);
         outputData.put("seed", data.get("url"));
         outputData.put("dl_ts", String.valueOf(new java.util.Date().getTime()));
-        produce(outputData, PAGES_QUEUE);
+        produce(outputData, prop.getProperty("kafka.seeds"));
     }
 
     public void produce(Map<String, String> data, String topic) {
@@ -88,7 +91,13 @@ public class Fetcher {
     }
 
     public static void main(String[] args) {
-        Fetcher f = new Fetcher();
-        f.consume(KafkaFactory.createConsumerStream(SEEDS_QUEUE));
+        Properties prop = new Properties();
+        try {
+            prop.load(new FileInputStream("resources/config.properties"));
+            Fetcher f = new Fetcher(prop);
+            f.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.seeds")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
