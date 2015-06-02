@@ -30,7 +30,7 @@ public class Fetcher {
 
     public Fetcher(Properties prop) {
         producer = KafkaFactory.createProducer();
-        prop = prop;
+        this.prop = prop;
     }
 
     private String getHtml(String url) {
@@ -64,13 +64,15 @@ public class Fetcher {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
+            System.out.println("input: " + msg);
             Map<String, String> data = gson.fromJson(msg, mapType);
             process(data);
         }
     }
 
     public void process(Map<String, String> data) {
-        String htmlContent = data.get("url");
+        String url = data.get("url");
+        String htmlContent = getHtml(url);
         if (htmlContent == null) return;
         Map<String, String> outputData = new HashMap<>();
         outputData.put("data", htmlContent);
@@ -81,7 +83,7 @@ public class Fetcher {
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("input: " + msg);
+        System.out.println("output: " + msg);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
         counter++;
         producer.send(message);

@@ -53,6 +53,7 @@ public class Parser {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
+            System.out.println("input: " + msg);
             Map<String, String> data = gson.fromJson(msg, mapType);
             process(data);
         }
@@ -146,7 +147,7 @@ public class Parser {
 
     public void produce(JsonObject data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("input: " + msg);
+        System.out.println("output: " + msg);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
         counter++;
         producer.send(message);
