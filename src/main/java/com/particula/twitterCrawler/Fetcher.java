@@ -77,8 +77,8 @@ public class Fetcher {
         Map<String, String> outputData = new HashMap<>();
         outputData.put("data", htmlContent);
         outputData.put("seed", data.get("url"));
-        outputData.put("dl_ts", String.valueOf(new java.util.Date().getTime()));
-        produce(outputData, prop.getProperty("kafka.seeds"));
+        outputData.put("dl_ts", String.valueOf(new java.util.Date().getTime() / 1000));
+        produce(outputData, prop.getProperty("kafka.pages"));
     }
 
     public void produce(Map<String, String> data, String topic) {

@@ -35,7 +35,7 @@ public class Seeder {
     }
 
     public void process() {
-        try (BufferedReader br = new BufferedReader(new FileReader("top20_account.txt"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(prop.getProperty("seed_list")))) {
             String line;
             while ((line = br.readLine()) != null) {
                 Map<String, String> data = new HashMap<>();
