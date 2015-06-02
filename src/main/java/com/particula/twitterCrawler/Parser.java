@@ -9,24 +9,17 @@ import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -55,27 +48,15 @@ public class Parser {
         }
     }
 
-    private NodeList getTags(String content) {
-        DocumentBuilderFactory builderFactory =
-                DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = null;
-        try {
-            builder = builderFactory.newDocumentBuilder();
-            Document document = builder.parse(new ByteArrayInputStream(content.getBytes()));
-            XPath xPath = XPathFactory.newInstance().newXPath();
-            String expression = "//*[@class='content']/p//a[@class='twitter-timeline-link']";
-            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
-            return nodeList;
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-        } catch (XPathExpressionException e) {
-            e.printStackTrace();
+    private List<String> discoverUrls(String content) {
+        Document doc = null;
+        doc = Jsoup.parse(content);
+        Elements elements = doc.select("div.content > p > a.twitter-timeline-link");
+        List<String> result = new ArrayList<>();
+        for (org.jsoup.nodes.Element e : elements) {
+            result.add(e.attr("href"));
         }
-        return null;
+        return result;
     }
 
     //TODO(Isaac): make it a service
@@ -122,13 +103,8 @@ public class Parser {
     public void process(JsonObject data) {
         String htmlContent = data.get("data").getAsString();
         if (htmlContent == null) return;
-        NodeList nodeList = getTags(htmlContent);
-        System.out.println("nodelist len: " + nodeList.getLength());
-        if (nodeList == null) return;
-        for (int i = 0; i < nodeList.getLength(); i++) {
-            if (nodeList.item(i).getNodeType() == Node.ELEMENT_NODE) {
-                Element el = (Element) nodeList.item(i);
-                String shortenedUrl = el.getAttribute("href");
+        List<String> urls = discoverUrls(htmlContent);
+        for(String shortenedUrl : urls) {
                 String url = extendUrl(shortenedUrl);
                 System.out.println("expended url: " + url);
                 JsonObject output = new JsonObject();
@@ -137,7 +113,6 @@ public class Parser {
                 output.addProperty("score", 1);
                 output.addProperty("dl_ts", data.get("dl_ts").getAsString());
                 produce(output, prop.getProperty("kafka.links"));
-            }
         }
     }
 
