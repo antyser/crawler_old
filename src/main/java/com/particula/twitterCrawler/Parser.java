@@ -120,7 +120,7 @@ public class Parser {
     }
 
     public void process(JsonObject data) {
-        String htmlContent = data.get("url").getAsString();
+        String htmlContent = data.get("data").getAsString();
         if (htmlContent == null) return;
         NodeList nodeList = getTags(htmlContent);
         System.out.println("nodelist len: " + nodeList.getLength());
