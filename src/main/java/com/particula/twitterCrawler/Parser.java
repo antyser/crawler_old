@@ -106,7 +106,7 @@ public class Parser {
         List<String> urls = discoverUrls(htmlContent);
         for(String shortenedUrl : urls) {
                 String url = extendUrl(shortenedUrl);
-                System.out.println("expended url: " + url);
+                if (url == null) continue;
                 JsonObject output = new JsonObject();
                 output.addProperty("url", url);
                 output.addProperty("domain", getDomainName(url));
