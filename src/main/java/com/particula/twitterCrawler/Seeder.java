@@ -52,7 +52,9 @@ public class Seeder {
     public static void main(String[] args) {
         Properties prop = new Properties();
         try {
-            prop.load(new FileInputStream("resources/config.properties"));
+            String path = new File("src/main/resources/config.properties")
+                    .getAbsolutePath();
+            prop.load(new FileInputStream(path));
             Seeder s = new Seeder(prop);
             s.process();
         } catch (IOException e) {

@@ -9,10 +9,7 @@ import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -93,7 +90,9 @@ public class Fetcher {
     public static void main(String[] args) {
         Properties prop = new Properties();
         try {
-            prop.load(new FileInputStream("resources/config.properties"));
+            String path = new File("src/main/resources/config.properties")
+                    .getAbsolutePath();
+            prop.load(new FileInputStream(path));
             Fetcher f = new Fetcher(prop);
             f.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.seeds")));
         } catch (IOException e) {

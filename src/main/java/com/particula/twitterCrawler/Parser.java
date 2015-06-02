@@ -163,7 +163,9 @@ public class Parser {
     public static void main(String[] args) {
         Properties prop = new Properties();
         try {
-            prop.load(new FileInputStream("resources/config.properties"));
+            String path = new File("src/main/resources/config.properties")
+                    .getAbsolutePath();
+            prop.load(new FileInputStream(path));
             Parser p = new Parser(prop);
             p.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.pages")));
         } catch (IOException e) {
