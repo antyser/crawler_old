@@ -2,6 +2,8 @@ package com.particula.twitterCrawler;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.particula.utils.KafkaFactory;
 import kafka.consumer.ConsumerIterator;
@@ -21,9 +23,15 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -33,6 +41,7 @@ public class Parser {
     private static final String PAGES_QUEUE = "java.test.pages";
     private static final String LINKS_QUEUE = "java.test.links";
     Producer<String, String> producer;
+    int counter = 0;
     Gson gson = new GsonBuilder().create();
     Type mapType = new TypeToken<Map<String, String>>() {
     }.getType();
@@ -75,6 +84,47 @@ public class Parser {
         return null;
     }
 
+    //TODO(Isaac): make it a service
+    public String extendUrl(String shortenedUrl) {
+        try {
+            String queryUrl = "http://api.longurl.org/v2/expand?format=json&url=";
+            URL obj = new URL(queryUrl + shortenedUrl);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+            int responseCode = con.getResponseCode();
+            if (responseCode != 200) {
+                return null;
+            }
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+            JsonParser parser = new JsonParser();
+            JsonObject object = (JsonObject) parser.parse(response.toString());
+            return object.get("long-url").getAsString();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String getDomainName(String url) {
+        URI uri = null;
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+        String domain = uri.getHost();
+        return domain.startsWith("www.") ? domain.substring(4) : domain;
+    }
+
     public void process(Map<String, String> data) {
         String htmlContent = data.get("url");
         if (htmlContent == null) return;
@@ -83,18 +133,31 @@ public class Parser {
         for (int i = 0; i < nodeList.getLength(); i++) {
             if (nodeList.item(i).getNodeType() == Node.ELEMENT_NODE) {
                 Element el = (Element) nodeList.item(i);
-                if (el.getNodeName().contains("staff")) {
-                    String shortenedUrl = el.getAttribute("href");
-
-                }
+                String shortenedUrl = el.getAttribute("href");
+                String url = extendUrl(shortenedUrl);
+                System.out.println("expended url: " + url);
+                JsonObject output = new JsonObject();
+                output.addProperty("url", url);
+                output.addProperty("domain", getDomainName(url));
+                output.addProperty("score", 1);
+                output.addProperty("dl_ts", data.get("dl_ts"));
             }
         }
+    }
+
+    public void produce(JsonObject data, String topic) {
+        String msg = gson.toJson(data);
+        System.out.println("input: " + msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
+        counter++;
+        producer.send(message);
     }
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("input: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
+        counter++;
         producer.send(message);
     }
 

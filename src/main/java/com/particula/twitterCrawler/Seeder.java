@@ -20,6 +20,7 @@ public class Seeder {
     private static final String SEEDS_QUEUE = "java.test.seeds";
     Producer<String, String> producer;
     Gson gson = new GsonBuilder().create();
+    int counter = 0;
 
     public Seeder() {
         producer = KafkaFactory.createProducer();
@@ -28,7 +29,8 @@ public class Seeder {
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("input: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
+        counter++;
         producer.send(message);
     }
 

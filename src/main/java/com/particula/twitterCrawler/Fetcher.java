@@ -24,6 +24,7 @@ public class Fetcher {
     private static final String SEEDS_QUEUE = "java.test.seeds";
     private static final String PAGES_QUEUE = "java.test.pages";
     Producer<String, String> producer;
+    int counter = 0;
     Gson gson = new GsonBuilder().create();
     Type mapType = new TypeToken<Map<String, String>>() {
     }.getType();
@@ -39,8 +40,6 @@ public class Fetcher {
             con.setRequestMethod("GET");
             con.setRequestProperty("User-Agent", "Mozilla/5.0");
             int responseCode = con.getResponseCode();
-            System.out.println("Sending 'GET' request to URL : " + url);
-            System.out.println("Response Code : " + responseCode);
             if (responseCode != 200) {
                 return null;
             }
@@ -83,7 +82,8 @@ public class Fetcher {
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("input: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
+        counter++;
         producer.send(message);
     }
 
