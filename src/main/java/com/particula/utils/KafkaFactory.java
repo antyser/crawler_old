@@ -22,7 +22,7 @@ public class KafkaFactory {
         props.put("partitioner.class", "example.producer.SimplePartitioner");
         props.put("request.required.acks", "1");
         ProducerConfig config = new ProducerConfig(props);
-        Producer<String, String> producer = new Producer<String, String>(config);
+        Producer<String, String> producer = new Producer<>(config);
         return producer;
     }
 
@@ -33,7 +33,7 @@ public class KafkaFactory {
         properties.put("group.id", "fetcher0601");
         ConsumerConfig consumerConfig = new ConsumerConfig(properties);
         ConsumerConnector consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
-        Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
+        Map<String, Integer> topicCountMap = new HashMap<>();
         topicCountMap.put(topic, new Integer(1));
         KafkaStream stream = consumerConnector.createMessageStreams(topicCountMap).get(topic).get(0);
         return stream;

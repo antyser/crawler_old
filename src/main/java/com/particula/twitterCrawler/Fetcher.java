@@ -73,7 +73,7 @@ public class Fetcher {
     public void process(Map<String, String> data) {
         String htmlContent = data.get("url");
         if (htmlContent == null) return;
-        Map<String, String> outputData = new HashMap<String, String>();
+        Map<String, String> outputData = new HashMap<>();
         outputData.put("data", htmlContent);
         outputData.put("seed", data.get("url"));
         outputData.put("dl_ts", String.valueOf(new java.util.Date().getTime()));

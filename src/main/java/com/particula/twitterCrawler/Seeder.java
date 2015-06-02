@@ -7,7 +7,9 @@ import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,22 +28,22 @@ public class Seeder {
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("input: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<String, String>(topic, msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, msg);
         producer.send(message);
     }
 
     public void process() {
-        try {
-            BufferedReader br = new BufferedReader(new FileReader("top20_account.txt"));
+        try (BufferedReader br = new BufferedReader(new FileReader("top20_account.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                Map<String, String> data = new HashMap<String, String>();
+                Map<String, String> data = new HashMap<>();
                 data.put("url", line);
                 produce(data, SEEDS_QUEUE);
             }
-            br.close();
-        } catch (Exception e) {
-            System.out.println(e.getStackTrace());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

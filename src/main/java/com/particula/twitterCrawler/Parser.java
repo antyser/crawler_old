@@ -94,7 +94,7 @@ public class Parser {
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         System.out.println("input: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<String, String>(topic, msg);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, msg);
         producer.send(message);
     }
 
