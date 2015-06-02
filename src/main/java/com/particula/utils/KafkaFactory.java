@@ -19,7 +19,6 @@ public class KafkaFactory {
         Properties props = new Properties();
         props.put("metadata.broker.list", "172.31.10.154:9092");
         props.put("serializer.class", "kafka.serializer.StringEncoder");
-        props.put("partitioner.class", "example.producer.SimplePartitioner");
         props.put("request.required.acks", "1");
         ProducerConfig config = new ProducerConfig(props);
         Producer<String, String> producer = new Producer<>(config);
