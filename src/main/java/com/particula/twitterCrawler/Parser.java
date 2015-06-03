@@ -104,15 +104,15 @@ public class Parser {
         String htmlContent = data.get("data").getAsString();
         if (htmlContent == null) return;
         List<String> urls = discoverUrls(htmlContent);
-        for(String shortenedUrl : urls) {
-                String url = extendUrl(shortenedUrl);
-                if (url == null) continue;
-                JsonObject output = new JsonObject();
-                output.addProperty("url", url);
-                output.addProperty("domain", getDomainName(url));
-                output.addProperty("score", 1);
-                output.addProperty("dl_ts", data.get("dl_ts").getAsString());
-                produce(output, prop.getProperty("kafka.links"));
+        for (String shortenedUrl : urls) {
+            String url = extendUrl(shortenedUrl);
+            if (url == null) continue;
+            JsonObject output = new JsonObject();
+            output.addProperty("url", url);
+            output.addProperty("domain", getDomainName(url));
+            output.addProperty("score", 1);
+            output.addProperty("dl_ts", data.get("dl_ts").getAsString());
+            produce(output, prop.getProperty("kafka.links"));
         }
     }
 
@@ -131,7 +131,9 @@ public class Parser {
                     .getAbsolutePath();
             prop.load(new FileInputStream(path));
             Parser p = new Parser(prop);
-            p.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.pages")));
+            String consumingTopic = prop.getProperty("kafka.pages");
+            System.out.println("consume topic " + consumingTopic);
+            p.consume(KafkaFactory.createConsumerStream(consumingTopic));
         } catch (IOException e) {
             e.printStackTrace();
         }

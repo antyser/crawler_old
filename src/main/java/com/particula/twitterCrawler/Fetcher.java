@@ -60,7 +60,6 @@ public class Fetcher {
     }
 
     public void consume(KafkaStream<byte[], byte[]> stream) {
-        System.out.println("fetcher starts");
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
@@ -96,7 +95,9 @@ public class Fetcher {
                     .getAbsolutePath();
             prop.load(new FileInputStream(path));
             Fetcher f = new Fetcher(prop);
-            f.consume(KafkaFactory.createConsumerStream(prop.getProperty("kafka.seeds")));
+            String consumingTopic = prop.getProperty("kafka.seeds");
+            System.out.println("consume topic "+consumingTopic);
+            f.consume(KafkaFactory.createConsumerStream(consumingTopic));
         } catch (IOException e) {
             e.printStackTrace();
         }
