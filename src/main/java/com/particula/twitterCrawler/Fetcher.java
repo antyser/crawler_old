@@ -96,8 +96,9 @@ public class Fetcher {
             prop.load(new FileInputStream(path));
             Fetcher f = new Fetcher(prop);
             String consumingTopic = prop.getProperty("kafka.seeds");
-            System.out.println("consume topic "+consumingTopic);
-            f.consume(KafkaFactory.createConsumerStream(consumingTopic));
+            String groupId = prop.getProperty("kafka.consume_group");
+            System.out.println("consume topic: groupid " + consumingTopic + ": " + groupId);
+            f.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();
         }

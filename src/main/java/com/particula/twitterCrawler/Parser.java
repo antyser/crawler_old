@@ -132,8 +132,9 @@ public class Parser {
             prop.load(new FileInputStream(path));
             Parser p = new Parser(prop);
             String consumingTopic = prop.getProperty("kafka.pages");
-            System.out.println("consume topic " + consumingTopic);
-            p.consume(KafkaFactory.createConsumerStream(consumingTopic));
+            String groupId = prop.getProperty("kafka.consume_group");
+            System.out.println("consume topic: groupid " + consumingTopic + ": " + groupId);
+            p.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();
         }

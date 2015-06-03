@@ -26,10 +26,11 @@ public class KafkaFactory {
     }
 
 
-    public static KafkaStream<byte[], byte[]> createConsumerStream(String topic) {
+    public static KafkaStream<byte[], byte[]> createConsumerStream(String topic, String groupId) {
         Properties properties = new Properties();
         properties.put("zookeeper.connect", "172.31.24.55:2181,172.31.45.93:2181,172.31.4.157:2181");
-        properties.put("group.id", "fetcher");
+        properties.put("group.id", groupId);
+        properties.put("fetch.message.max.bytes", 20 * 1024 * 1024);
         ConsumerConfig consumerConfig = new ConsumerConfig(properties);
         ConsumerConnector consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
         Map<String, Integer> topicCountMap = new HashMap<>();
