@@ -66,7 +66,7 @@ public class Fetcher {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            LOGGER.info("fetcher consume: {0}", counterIn++);
+            LOGGER.info("fetcher consume: {}", counterIn++);
             Map<String, String> data = gson.fromJson(msg, mapType);
             process(data);
         }
@@ -85,7 +85,7 @@ public class Fetcher {
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
-        LOGGER.info("fetcher produce: {0}", counterOut++);
+        LOGGER.info("fetcher produce: {}", counterOut++);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counterOut), msg);
         producer.send(message);
     }
@@ -99,7 +99,7 @@ public class Fetcher {
             Fetcher f = new Fetcher(prop);
             String consumingTopic = prop.getProperty("kafka.seeds");
             String groupId = prop.getProperty("kafka.consume_group");
-            LOGGER.info("consume topic: groupid {0}: {1}", consumingTopic, groupId);
+            LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
             f.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();

@@ -32,7 +32,7 @@ public class Seeder {
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
-        LOGGER.info("output: {0}  {1}", msg, counter++);
+        LOGGER.info("output: {}  {}", msg, counter++);
         producer.send(message);
     }
 

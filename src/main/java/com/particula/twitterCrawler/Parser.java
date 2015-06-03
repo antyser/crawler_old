@@ -45,7 +45,7 @@ public class Parser {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            LOGGER.info("parser consume : {0}", counterConsume++);
+            LOGGER.info("parser consume : {}", counterConsume++);
             JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
@@ -123,7 +123,7 @@ public class Parser {
     public void produce(JsonObject data, String topic) {
         String msg = gson.toJson(data);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counterProduce), msg);
-        LOGGER.info("fetcher produce : {0} {1}", counterProduce++, msg);
+        LOGGER.info("fetcher produce : {} {}", counterProduce++, msg);
         producer.send(message);
     }
 
@@ -136,7 +136,7 @@ public class Parser {
             Parser p = new Parser(prop);
             String consumingTopic = prop.getProperty("kafka.pages");
             String groupId = prop.getProperty("kafka.consume_group");
-            LOGGER.info("consume topic: groupid {0}: {1}", consumingTopic, groupId);
+            LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
             p.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();

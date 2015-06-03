@@ -31,7 +31,8 @@ public class KafkaFactory {
         properties.put("zookeeper.connect", "172.31.24.55:2181,172.31.45.93:2181,172.31.4.157:2181");
         properties.put("group.id", groupId);
         properties.put("fetch.message.max.bytes", String.valueOf(20 * 1024 * 1024));
-        properties.put("queued.max.message.chunks", String.valueOf(1));
+        //turn this on because some files are stuck in kafka queue. There will be performance penalty
+        properties.put("compression.codec", "gzip");
         ConsumerConfig consumerConfig = new ConsumerConfig(properties);
         ConsumerConnector consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
         Map<String, Integer> topicCountMap = new HashMap<>();
