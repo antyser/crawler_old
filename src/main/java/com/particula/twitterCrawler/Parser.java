@@ -12,6 +12,8 @@ import kafka.producer.KeyedMessage;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -26,8 +28,9 @@ import java.util.Properties;
  * Created by junliu on 6/1/15.
  */
 public class Parser {
+    public static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
     Producer<String, String> producer;
-    int counter = 0;
+    int counterConsume = 0, counterProduce = 0;
     Properties prop;
     JsonParser parser = new JsonParser();
     Gson gson = new GsonBuilder().create();
@@ -38,11 +41,11 @@ public class Parser {
     }
 
     public void consume(KafkaStream<byte[], byte[]> stream) {
-        System.out.println("parser starts");
+        LOGGER.info("fetcher start");
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            System.out.println("parser input: " + counter);
+            LOGGER.info("parser consume : {0}", counterConsume++);
             JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
@@ -96,6 +99,7 @@ public class Parser {
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
+        if (uri == null) return "";
         String domain = uri.getHost();
         return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
@@ -118,9 +122,8 @@ public class Parser {
 
     public void produce(JsonObject data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("output: " + msg);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
-        counter++;
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counterProduce), msg);
+        LOGGER.info("fetcher produce : {0} {1}", counterProduce++, msg);
         producer.send(message);
     }
 
@@ -133,7 +136,7 @@ public class Parser {
             Parser p = new Parser(prop);
             String consumingTopic = prop.getProperty("kafka.pages");
             String groupId = prop.getProperty("kafka.consume_group");
-            System.out.println("consume topic: groupid " + consumingTopic + ": " + groupId);
+            LOGGER.info("consume topic: groupid {0}: {1}", consumingTopic, groupId);
             p.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();

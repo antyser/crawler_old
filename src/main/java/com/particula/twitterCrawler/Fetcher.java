@@ -8,6 +8,8 @@ import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -21,8 +23,9 @@ import java.util.Properties;
  * Created by junliu on 6/1/15.
  */
 public class Fetcher {
+    public static final Logger LOGGER = LoggerFactory.getLogger(Fetcher.class);
     Producer<String, String> producer;
-    int counter = 0;
+    int counterIn = 0, counterOut = 0;
     Gson gson = new GsonBuilder().create();
     Properties prop;
     Type mapType = new TypeToken<Map<String, String>>() {
@@ -63,7 +66,7 @@ public class Fetcher {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            System.out.println("input: " + msg);
+            LOGGER.info("fetcher consume: {0}", counterIn++);
             Map<String, String> data = gson.fromJson(msg, mapType);
             process(data);
         }
@@ -82,9 +85,8 @@ public class Fetcher {
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("fetcher output: " + counter);
-        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
-        counter++;
+        LOGGER.info("fetcher produce: {0}", counterOut++);
+        KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counterOut), msg);
         producer.send(message);
     }
 
@@ -97,7 +99,7 @@ public class Fetcher {
             Fetcher f = new Fetcher(prop);
             String consumingTopic = prop.getProperty("kafka.seeds");
             String groupId = prop.getProperty("kafka.consume_group");
-            System.out.println("consume topic: groupid " + consumingTopic + ": " + groupId);
+            LOGGER.info("consume topic: groupid {0}: {1}", consumingTopic, groupId);
             f.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();

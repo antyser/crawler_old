@@ -5,6 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.particula.utils.KafkaFactory;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.HashMap;
@@ -16,6 +18,7 @@ import java.util.Properties;
  */
 public class Seeder {
     private static final String INITIAL_URL = "https://twitter.com/";
+    public static final Logger LOGGER = LoggerFactory.getLogger(Seeder.class);
     Producer<String, String> producer;
     Properties prop;
     Gson gson = new GsonBuilder().create();
@@ -28,9 +31,8 @@ public class Seeder {
 
     public void produce(Map<String, String> data, String topic) {
         String msg = gson.toJson(data);
-        System.out.println("output: " + msg);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counter), msg);
-        counter++;
+        LOGGER.info("output: {0}  {1}", msg, counter++);
         producer.send(message);
     }
 
