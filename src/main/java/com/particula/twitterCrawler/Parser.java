@@ -42,7 +42,7 @@ public class Parser {
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
             String msg = new String(it.next().message());
-            //System.out.println("input: " + msg);
+            System.out.println("parser input: " + counter);
             JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
