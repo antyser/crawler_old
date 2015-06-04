@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.particula.service.ExtendUrlService;
 import com.particula.utils.KafkaFactory;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
@@ -15,11 +16,11 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.HttpURLConnection;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -52,44 +53,13 @@ public class Parser {
     }
 
     private List<String> discoverUrls(String content) {
-        Document doc = null;
-        doc = Jsoup.parse(content);
-        Elements elements = doc.select("div.content > p > a.twitter-timeline-link");
+        Document doc = Jsoup.parse(content);
+        Elements elements = doc.select("div.content > p > a.twitter-timeline-link > span.js-display-url");
         List<String> result = new ArrayList<>();
         for (org.jsoup.nodes.Element e : elements) {
-            result.add(e.attr("href"));
+            result.add(e.text());
         }
         return result;
-    }
-
-    //TODO(Isaac): make it a service
-    public String extendUrl(String shortenedUrl) {
-        try {
-            String queryUrl = "http://api.longurl.org/v2/expand?format=json&url=";
-            URL obj = new URL(queryUrl + shortenedUrl);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("User-Agent", "Mozilla/5.0");
-            int responseCode = con.getResponseCode();
-            if (responseCode != 200) {
-                return null;
-            }
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(con.getInputStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-            JsonParser parser = new JsonParser();
-            JsonObject object = (JsonObject) parser.parse(response.toString());
-            return object.get("long-url").getAsString();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public static String getDomainName(String url) {
@@ -98,6 +68,7 @@ public class Parser {
             uri = new URI(url);
         } catch (URISyntaxException e) {
             e.printStackTrace();
+            return "";
         }
         if (uri == null) return "";
         String domain = uri.getHost();
@@ -108,8 +79,8 @@ public class Parser {
         String htmlContent = data.get("data").getAsString();
         if (htmlContent == null) return;
         List<String> urls = discoverUrls(htmlContent);
-        for (String shortenedUrl : urls) {
-            String url = extendUrl(shortenedUrl);
+        List<String> expendedUrl = ExtendUrlService.extendUrls(urls);
+        for (String url : urls) {
             if (url == null) continue;
             JsonObject output = new JsonObject();
             output.addProperty("url", url);
