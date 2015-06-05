@@ -72,6 +72,7 @@ public class Parser {
         }
         if (uri == null) return "";
         String domain = uri.getHost();
+        if (domain == null) return "";
         return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
