@@ -35,20 +35,13 @@ public class Parser {
     Properties prop;
     JsonParser parser = new JsonParser();
     Gson gson = new GsonBuilder().create();
-    ExtendUrlService service;
 
     public Parser(Properties prop) {
         producer = KafkaFactory.createProducer();
         this.prop = prop;
-        this.service = new ExtendUrlService();
-        String consumingTopic = prop.getProperty("kafka.pages");
-        String groupId = prop.getProperty("kafka.consume_group");
-        LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
-        readFromKafka(KafkaFactory.createConsumerStream(consumingTopic, groupId));
-        produce();
     }
 
-    public void readFromKafka(KafkaStream<byte[], byte[]> stream) {
+    public void consume(KafkaStream<byte[], byte[]> stream) {
         LOGGER.info("fetcher start");
         ConsumerIterator<byte[], byte[]> it = stream.iterator();
         while (it.hasNext()) {
@@ -59,14 +52,7 @@ public class Parser {
         }
     }
 
-    public void process(JsonObject data) {
-        String htmlContent = data.get("data").getAsString();
-        if (htmlContent == null) return;
-        List<String> urls = discoverUrls(htmlContent);
-        service.consume(urls);
-    }
-
-    private static List<String> discoverUrls(String content) {
+    private List<String> discoverUrls(String content) {
         Document doc = Jsoup.parse(content);
         Elements elements = doc.select("div.content > p > a.twitter-timeline-link > span.js-display-url");
         List<String> result = new ArrayList<>();
@@ -89,21 +75,23 @@ public class Parser {
         return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
-    public void produce() {
-        while (true) {
-            List<String> urls = service.produce();
-            for (String url : urls) {
-                if (url == null) continue;
-                JsonObject output = new JsonObject();
-                output.addProperty("url", url);
-                output.addProperty("domain", getDomainName(url));
-                output.addProperty("score", 1);
-                writeToKafka(output, prop.getProperty("kafka.links"));
-            }
+    public void process(JsonObject data) {
+        String htmlContent = data.get("data").getAsString();
+        if (htmlContent == null) return;
+        List<String> urls = discoverUrls(htmlContent);
+        List<String> expendedUrl = ExtendUrlService.extendUrls(urls);
+        for (String url : urls) {
+            if (url == null) continue;
+            JsonObject output = new JsonObject();
+            output.addProperty("url", url);
+            output.addProperty("domain", getDomainName(url));
+            output.addProperty("score", 1);
+            output.addProperty("dl_ts", data.get("dl_ts").getAsString());
+            produce(output, prop.getProperty("kafka.links"));
         }
     }
 
-    public void writeToKafka(JsonObject data, String topic) {
+    public void produce(JsonObject data, String topic) {
         String msg = gson.toJson(data);
         KeyedMessage<String, String> message = new KeyedMessage<>(topic, String.valueOf(counterProduce), msg);
         LOGGER.info("fetcher produce : {} {}", counterProduce++, msg);
@@ -117,8 +105,13 @@ public class Parser {
                     .getAbsolutePath();
             prop.load(new FileInputStream(path));
             Parser p = new Parser(prop);
+            String consumingTopic = prop.getProperty("kafka.pages");
+            String groupId = prop.getProperty("kafka.consume_group");
+            LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
+            p.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 }
