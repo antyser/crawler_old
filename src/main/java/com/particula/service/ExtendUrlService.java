@@ -18,8 +18,9 @@ import java.util.concurrent.Future;
  * Created by junliu on 6/3/15.
  */
 public class ExtendUrlService {
+    public static AsyncHttpClient client = new AsyncHttpClient();
     public static Future<Response> asyncExtendUrl(String shortenedUrl) {
-        try (AsyncHttpClient client = new AsyncHttpClient()) {
+        try {
             Future<Response> future = client.prepareGet("http://" + shortenedUrl).setFollowRedirects(true).addHeader("User-Agent",
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko)" +
                             " Chrome/43.0.2357.81 Safari/537.36").execute();
