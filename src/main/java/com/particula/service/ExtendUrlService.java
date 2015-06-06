@@ -19,8 +19,7 @@ import java.util.concurrent.Future;
  */
 public class ExtendUrlService {
     public static Future<Response> asyncExtendUrl(String shortenedUrl) {
-        try {
-            AsyncHttpClient client = new AsyncHttpClient();
+        try (AsyncHttpClient client = new AsyncHttpClient()) {
             Future<Response> future = client.prepareGet("http://" + shortenedUrl).setFollowRedirects(true).addHeader("User-Agent",
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko)" +
                             " Chrome/43.0.2357.81 Safari/537.36").execute();
@@ -63,7 +62,7 @@ public class ExtendUrlService {
 
     public static List<String> extendUrls(List<String> shortenUrls) {
         List<Future<Response>> futures = new ArrayList<>();
-        for (String shortenUrl: shortenUrls) {
+        for (String shortenUrl : shortenUrls) {
             futures.add(asyncExtendUrl(shortenUrl));
         }
         List<String> urls = new ArrayList<>();
