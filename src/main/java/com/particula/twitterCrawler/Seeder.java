@@ -44,6 +44,7 @@ public class Seeder {
                 data.put("url", INITIAL_URL + line);
                 produce(data, prop.getProperty("kafka.seeds"));
             }
+            producer.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
