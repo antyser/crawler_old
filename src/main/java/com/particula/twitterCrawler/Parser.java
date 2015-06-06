@@ -81,7 +81,7 @@ public class Parser {
         if (htmlContent == null) return;
         List<String> urls = discoverUrls(htmlContent);
         List<String> expendedUrl = ExtendUrlService.extendUrls(urls);
-        for (String url : urls) {
+        for (String url : expendedUrl) {
             if (url == null) continue;
             JsonObject output = new JsonObject();
             output.addProperty("url", url);
