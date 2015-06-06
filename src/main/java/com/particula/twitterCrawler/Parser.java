@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -63,17 +63,12 @@ public class Parser {
     }
 
     public static String getDomainName(String url) {
-        URI uri = null;
         try {
-            uri = new URI(url);
-        } catch (URISyntaxException e) {
+            return new URL(url).getHost();
+        } catch (MalformedURLException e) {
             e.printStackTrace();
-            return "";
         }
-        if (uri == null) return "";
-        String domain = uri.getHost();
-        if (domain == null) return "";
-        return domain.startsWith("www.") ? domain.substring(4) : domain;
+        return "";
     }
 
     public void process(JsonObject data) {
