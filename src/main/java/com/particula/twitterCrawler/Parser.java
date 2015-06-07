@@ -79,21 +79,22 @@ public class Parser {
         List<JsonObject> tweetsMetaList = parseTwitter(htmlContent);
         Map<String, Future<Response>> urlExtendFuture = new HashMap<>();
         for (JsonObject tweetMeta : tweetsMetaList) {
-            if(!tweetMeta.has("tiny_url")){
+            if (!tweetMeta.has("tiny_url")) {
                 continue;
             }
             String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
+            LOGGER.info("tiny url: {}", tinyUrl);
             urlExtendFuture.put(tinyUrl, ExtendUrlService.asyncExtendUrl(tinyUrl));
         }
 
         for (JsonObject tweetMeta : tweetsMetaList) {
-            if(!tweetMeta.has("tiny_url")){
+            if (!tweetMeta.has("tiny_url")) {
                 continue;
             }
             String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
             String longUrl = "";
             try {
-                 longUrl = urlExtendFuture.get(tinyUrl).get().getUri().toUrl();
+                longUrl = urlExtendFuture.get(tinyUrl).get().getUri().toUrl();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
@@ -121,9 +122,9 @@ public class Parser {
             JsonObject object = new JsonObject();
             object.addProperty("tiny_url", tinyurl);
             object.addProperty("tweet_id", tweetId);
-            object.addProperty("retweet", Integer.valueOf(retweet));
-            object.addProperty("favorite", Integer.valueOf(favorite));
-            object.addProperty("pubdate", Long.valueOf(pubdate));
+            object.addProperty("retweet", retweet);
+            object.addProperty("favorite", favorite);
+            object.addProperty("pubdate", pubdate);
             result.add(object);
         }
         return result;
