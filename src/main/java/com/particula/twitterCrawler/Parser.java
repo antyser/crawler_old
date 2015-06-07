@@ -79,19 +79,19 @@ public class Parser {
         List<JsonObject> tweetsMetaList = parseTwitter(htmlContent);
         Map<String, Future<Response>> urlExtendFuture = new HashMap<>();
         for (JsonObject tweetMeta : tweetsMetaList) {
-            if (!tweetMeta.has("tiny_url")) {
+            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
+            if (tinyUrl.length() == 0){
                 continue;
             }
-            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
             LOGGER.info("tiny url: {}", tinyUrl);
             urlExtendFuture.put(tinyUrl, ExtendUrlService.asyncExtendUrl(tinyUrl));
         }
 
         for (JsonObject tweetMeta : tweetsMetaList) {
-            if (!tweetMeta.has("tiny_url")) {
+            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
+            if (tinyUrl.length() == 0){
                 continue;
             }
-            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
             String longUrl = "";
             try {
                 longUrl = urlExtendFuture.get(tinyUrl).get().getUri().toUrl();
