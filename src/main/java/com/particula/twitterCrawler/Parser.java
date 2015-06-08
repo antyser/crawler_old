@@ -92,16 +92,16 @@ public class Parser {
                     if (data.has("ts_fetch")) {
                         tweetMeta.addProperty("ts_fetch", data.get("ts_fetch").getAsString());
                     }
-                    produce(tweetMeta, prop.getProperty("kafka.links"));
+                    produce(outputObj, prop.getProperty("kafka.links"));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
                 }
             }
-            futureResponseMap.clear();
 
         }
+        futureResponseMap.clear();
     }
 
     private List<JsonObject> parseTwitter(String htmlContent) {
