@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.ning.http.client.Response;
 import com.particula.service.ExtendUrlService;
 import com.particula.utils.KafkaFactory;
+import com.particula.utils.Utils;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
@@ -16,11 +17,10 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -37,10 +37,17 @@ public class Parser {
     JsonParser parser = new JsonParser();
     Gson gson = new GsonBuilder().create();
 
-    public Parser(Properties prop) {
-        producer = KafkaFactory.createProducer();
-        this.prop = prop;
+    public Parser(String configDir) {
         this.futureResponseMap = new HashMap<>();
+        Path appConfigPath = Paths.get(configDir, "app.properties");
+        this.prop = Utils.loadProperties(appConfigPath);
+        Path producerPath = Paths.get(configDir, "producer.properties");
+        Path consumerPath = Paths.get(configDir, "consumer.properties");
+        producer = KafkaFactory.createProducer(producerPath);
+
+        consume(KafkaFactory.createConsumerStream(consumerPath,
+                prop.getProperty("kafka.pages"),
+                prop.getProperty("kafka.consume_group")));
     }
 
     public void consume(KafkaStream<byte[], byte[]> stream) {
@@ -139,19 +146,6 @@ public class Parser {
     }
 
     public static void main(String[] args) {
-        Properties prop = new Properties();
-        try {
-            String path = new File("src/main/resources/config.properties")
-                    .getAbsolutePath();
-            prop.load(new FileInputStream(path));
-            Parser p = new Parser(prop);
-            String consumingTopic = prop.getProperty("kafka.pages");
-            String groupId = prop.getProperty("kafka.consume_group");
-            LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
-            p.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        Parser p = new Parser("src/main/resources");
     }
 }

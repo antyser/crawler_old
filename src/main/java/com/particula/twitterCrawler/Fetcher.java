@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.particula.utils.KafkaFactory;
+import com.particula.utils.Utils;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
@@ -15,6 +16,8 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -31,9 +34,15 @@ public class Fetcher {
     Type mapType = new TypeToken<Map<String, String>>() {
     }.getType();
 
-    public Fetcher(Properties prop) {
-        producer = KafkaFactory.createProducer();
-        this.prop = prop;
+    public Fetcher(String configDir) {
+        Path appConfigPath = Paths.get(configDir, "app.properties");
+        this.prop = Utils.loadProperties(appConfigPath);
+        Path producerPath = Paths.get(configDir, "producer.properties");
+        Path consumerPath = Paths.get(configDir, "consumer.properties");
+        producer = KafkaFactory.createProducer(producerPath);
+        consume(KafkaFactory.createConsumerStream(consumerPath,
+                prop.getProperty("kafka.seeds"),
+                prop.getProperty("kafka.consume_group")));
     }
 
     private String getHtml(String url) {
@@ -91,18 +100,6 @@ public class Fetcher {
     }
 
     public static void main(String[] args) {
-        Properties prop = new Properties();
-        try {
-            String path = new File("src/main/resources/config.properties")
-                    .getAbsolutePath();
-            prop.load(new FileInputStream(path));
-            Fetcher f = new Fetcher(prop);
-            String consumingTopic = prop.getProperty("kafka.seeds");
-            String groupId = prop.getProperty("kafka.consume_group");
-            LOGGER.info("consume topic: groupid {}: {}", consumingTopic, groupId);
-            f.consume(KafkaFactory.createConsumerStream(consumingTopic, groupId));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Fetcher f = new Fetcher("src/main/resources");
     }
 }
