@@ -1,9 +1,6 @@
 package com.particula.twitterCrawler;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.ning.http.client.Response;
 import com.particula.service.ExtendUrlService;
 import com.particula.utils.KafkaFactory;
@@ -11,6 +8,7 @@ import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -33,6 +31,7 @@ import java.util.concurrent.Future;
 public class Parser {
     public static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
     Producer<String, String> producer;
+    private static Map<String, Future<Response>> futureResponseMap;
     int counterConsume = 0, counterProduce = 0;
     Properties prop;
     JsonParser parser = new JsonParser();
@@ -41,6 +40,7 @@ public class Parser {
     public Parser(Properties prop) {
         producer = KafkaFactory.createProducer();
         this.prop = prop;
+        this.futureResponseMap = new HashMap<>();
     }
 
     public void consume(KafkaStream<byte[], byte[]> stream) {
@@ -52,16 +52,6 @@ public class Parser {
             JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
-    }
-
-    private List<String> discoverUrls(String content) {
-        Document doc = Jsoup.parse(content);
-        Elements elements = doc.select("div.content > p > a.twitter-timeline-link > span.js-display-url");
-        List<String> result = new ArrayList<>();
-        for (org.jsoup.nodes.Element e : elements) {
-            result.add(e.text());
-        }
-        return result;
     }
 
     public static String getDomainName(String url) {
@@ -77,35 +67,40 @@ public class Parser {
         String htmlContent = data.get("data").getAsString();
         if (htmlContent == null) return;
         List<JsonObject> tweetsMetaList = parseTwitter(htmlContent);
-        Map<String, Future<Response>> urlExtendFuture = new HashMap<>();
         for (JsonObject tweetMeta : tweetsMetaList) {
-            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
-            if (tinyUrl.length() == 0){
-                continue;
+            JsonArray tinyUrls = tweetMeta.getAsJsonArray("tiny_urls");
+            for (JsonElement tinyUrlElem : tinyUrls) {
+                String tinyUrl = tinyUrlElem.getAsString();
+                LOGGER.info("tiny url: {}", tinyUrl);
+                futureResponseMap.put(tinyUrl, ExtendUrlService.asyncExtendUrl(tinyUrl));
             }
-            LOGGER.info("tiny url: {}", tinyUrl);
-            urlExtendFuture.put(tinyUrl, ExtendUrlService.asyncExtendUrl(tinyUrl));
         }
 
         for (JsonObject tweetMeta : tweetsMetaList) {
-            String tinyUrl = tweetMeta.getAsJsonPrimitive("tiny_url").getAsString();
-            if (tinyUrl.length() == 0){
-                continue;
+            JsonArray tinyUrls = tweetMeta.getAsJsonArray("tiny_urls");
+            for (JsonElement tinyUrlElem : tinyUrls) {
+                String tinyUrl = tinyUrlElem.getAsString();
+                try {
+                    String longUrl = futureResponseMap.get(tinyUrl).get().getUri().toUrl();
+                    if (StringUtils.isEmpty(longUrl)) {
+                        continue;
+                    }
+                    JsonObject outputObj = new JsonObject();
+                    outputObj.addProperty("url", longUrl);
+                    outputObj.add("tweet_meta", tweetMeta);
+                    outputObj.addProperty("domain", getDomainName(longUrl));
+                    if (data.has("ts_fetch")) {
+                        tweetMeta.addProperty("ts_fetch", data.get("ts_fetch").getAsString());
+                    }
+                    produce(tweetMeta, prop.getProperty("kafka.links"));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
             }
-            String longUrl = "";
-            try {
-                longUrl = urlExtendFuture.get(tinyUrl).get().getUri().toUrl();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
-                e.printStackTrace();
-            }
-            tweetMeta.addProperty("url", longUrl);
-            if (longUrl.length() == 0) continue;
-            tweetMeta.addProperty("domain", getDomainName(longUrl));
-            tweetMeta.addProperty("score", 1);
-            tweetMeta.addProperty("dl_ts", data.get("dl_ts").getAsString());
-            produce(tweetMeta, prop.getProperty("kafka.links"));
+            futureResponseMap.clear();
+
         }
     }
 
@@ -114,17 +109,23 @@ public class Parser {
         Document doc = Jsoup.parse(htmlContent);
         Elements elements = doc.select("li[id^=stream-item-tweet-]");
         for (Element e : elements) {
-            String tinyurl = e.select("div.content > p > a.twitter-timeline-link > span.js-display-url").text();
             String tweetId = e.attr("data-item-id");
             String retweet = e.select("span[class^=ProfileTweet-action--retweet] > span.ProfileTweet-actionCount").attr("data-tweet-stat-count");
             String favorite = e.select("span[class^=ProfileTweet-action--favorite] > span.ProfileTweet-actionCount").attr("data-tweet-stat-count");
             String pubdate = e.select("span[data-time]").attr("data-time");
+            String text = e.select("div.content > p").text();
+            Elements tinyUrlElemList = e.select("div.content > p > a.twitter-timeline-link > span.js-display-url");
+            JsonArray tinyUrls = new JsonArray();
+            for (Element elem : tinyUrlElemList) {
+                tinyUrls.add(new JsonPrimitive(elem.text()));
+            }
             JsonObject object = new JsonObject();
-            object.addProperty("tiny_url", tinyurl);
             object.addProperty("tweet_id", tweetId);
             object.addProperty("retweet", retweet);
             object.addProperty("favorite", favorite);
             object.addProperty("pubdate", pubdate);
+            object.addProperty("text", text);
+            object.add("tiny_urls", tinyUrls);
             result.add(object);
         }
         return result;
