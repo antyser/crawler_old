@@ -2,7 +2,8 @@ package com.particula.twitterCrawler;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.particula.utils.KafkaFactory;
 import com.particula.utils.Utils;
 import kafka.consumer.ConsumerIterator;
@@ -12,12 +13,13 @@ import kafka.producer.KeyedMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.lang.reflect.Type;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -29,10 +31,9 @@ public class Fetcher {
     public static final Logger LOGGER = LoggerFactory.getLogger(Fetcher.class);
     Producer<String, String> producer;
     int counterIn = 0, counterOut = 0;
-    Gson gson = new GsonBuilder().create();
     Properties prop;
-    Type mapType = new TypeToken<Map<String, String>>() {
-    }.getType();
+    JsonParser parser = new JsonParser();
+    Gson gson = new GsonBuilder().create();
 
     public Fetcher(String configDir) {
         Path appConfigPath = Paths.get(configDir, "app.properties");
@@ -76,19 +77,20 @@ public class Fetcher {
         while (it.hasNext()) {
             String msg = new String(it.next().message());
             LOGGER.info("fetcher consume: {}", counterIn++);
-            Map<String, String> data = gson.fromJson(msg, mapType);
+            JsonObject data = (JsonObject) parser.parse(msg);
             process(data);
         }
     }
 
-    public void process(Map<String, String> data) {
-        String url = data.get("url");
+    public void process(JsonObject data) {
+        String url = data.get("url").getAsString();
         String htmlContent = getHtml(url);
         if (htmlContent == null) return;
+        data.addProperty("content", htmlContent);
+        //add original url
+        data.addProperty("ts_fetch", String.valueOf(new Date().getTime() / 1000));
         Map<String, String> outputData = new HashMap<>();
         outputData.put("data", htmlContent);
-        outputData.put("seed", data.get("url"));
-        outputData.put("dl_ts", String.valueOf(new java.util.Date().getTime() / 1000));
         produce(outputData, prop.getProperty("kafka.pages"));
     }
 
